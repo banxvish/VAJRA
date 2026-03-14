@@ -1,0 +1,23 @@
+# ============================================================
+# KAVACHA AI Voice Defense Engine — Python Dependencies
+# ============================================================
+torch>=2.1.0
+torchaudio>=2.1.0
+torchvision>=0.16.0
+transformers>=4.36.0
+speechbrain>=1.0.0
+scikit-learn>=1.3.0
+onnx>=1.15.0
+onnxruntime>=1.17.0
+numpy>=1.24.0
+tqdm>=4.66.0
+pyyaml>=6.0
+tensorboard>=2.15.0
+matplotlib>=3.8.0
+
+streamlit>=1.34.0
+
+fastapi
+uvicorn
+huggingface_hub==0.20.3
+librosa>=0.10.0

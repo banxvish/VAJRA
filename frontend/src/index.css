@@ -1,0 +1,166 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 222 60% 7%;
+    --foreground: 230 60% 92%;
+
+    --card: 222 45% 6%;
+    --card-foreground: 230 60% 92%;
+
+    --popover: 222 45% 6%;
+    --popover-foreground: 230 60% 92%;
+
+    --primary: 37 90% 55%;
+    --primary-foreground: 222 60% 7%;
+
+    --secondary: 187 100% 50%;
+    --secondary-foreground: 222 60% 7%;
+
+    --muted: 222 35% 14%;
+    --muted-foreground: 222 25% 60%;
+
+    --accent: 255 100% 69%;
+    --accent-foreground: 230 60% 92%;
+
+    --destructive: 350 100% 62%;
+    --destructive-foreground: 230 60% 92%;
+
+    --authentic: 145 100% 45%;
+    --authentic-foreground: 222 60% 7%;
+
+    --border: 0 0% 100% / 0.06;
+    --input: 222 35% 14%;
+    --ring: 37 90% 55%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 222 45% 6%;
+    --sidebar-foreground: 230 60% 92%;
+    --sidebar-primary: 37 90% 55%;
+    --sidebar-primary-foreground: 222 60% 7%;
+    --sidebar-accent: 222 35% 14%;
+    --sidebar-accent-foreground: 230 60% 92%;
+    --sidebar-border: 0 0% 100% / 0.06;
+    --sidebar-ring: 37 90% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-body antialiased;
+    background-image:
+      linear-gradient(rgba(0,229,255,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,255,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: #080C1A;
+}
+::-webkit-scrollbar-thumb {
+  background: #F5A623;
+  border-radius: 2px;
+}
+
+/* Panel gold corner brackets */
+.vajra-panel {
+  position: relative;
+}
+.vajra-panel::before,
+.vajra-panel::after {
+  content: '';
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  pointer-events: none;
+}
+.vajra-panel::before {
+  top: -1px;
+  left: -1px;
+  border-top: 2px solid #F5A623;
+  border-left: 2px solid #F5A623;
+  border-top-left-radius: 12px;
+}
+.vajra-panel::after {
+  bottom: -1px;
+  right: -1px;
+  border-bottom: 2px solid #F5A623;
+  border-right: 2px solid #F5A623;
+  border-bottom-right-radius: 12px;
+}
+
+/* Threat glow */
+.vajra-panel.threat-glow {
+  box-shadow: 0 0 20px rgba(255, 59, 92, 0.3), inset 0 0 20px rgba(255, 59, 92, 0.05);
+}
+.vajra-panel.verified-glow {
+  box-shadow: 0 0 20px rgba(0, 230, 118, 0.2), inset 0 0 20px rgba(0, 230, 118, 0.03);
+}
+
+/* Scanline overlay */
+.scanline-overlay {
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 229, 255, 0.03) 2px,
+    rgba(0, 229, 255, 0.03) 4px
+  );
+}
+
+/* Noise overlay for video shield */
+.noise-overlay {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.15'/%3E%3C/svg%3E");
+  background-size: 128px 128px;
+}
+
+/* Keyframes */
+@keyframes scan-line {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100vw); }
+}
+
+@keyframes pulse-threat {
+  0%, 100% { box-shadow: 0 0 20px rgba(255, 59, 92, 0.3); }
+  50% { box-shadow: 0 0 40px rgba(255, 59, 92, 0.6); }
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+@keyframes rotate-ring {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-scan-line {
+  animation: scan-line 3s linear infinite;
+}
+
+.animate-pulse-threat {
+  animation: pulse-threat 1.5s ease-in-out infinite;
+}
+
+.animate-pulse-dot {
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+.animate-rotate-ring {
+  animation: rotate-ring 3s linear infinite;
+}

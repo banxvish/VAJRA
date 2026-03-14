@@ -1,0 +1,68 @@
+# ============================================================
+# KAVACHA AI Voice Defense Engine — .gitignore
+# ============================================================
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+
+# ---- Virtual Environments ----
+venv/
+.venv/
+env/
+
+# ---- Node / Frontend ----
+node_modules/
+frontend/node_modules/
+
+# ---- IDE / Editor ----
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ---- OS ----
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---- Model weights & large files ----
+*.pt
+*.onnx
+*.bin
+*.safetensors
+pretrained_models/
+voice-ai/pretrained_models/
+voice-ai/checkpoints/
+voice-ai/runs/
+voice-ai/downloads/
+voice-ai/voiceprints/
+
+# ---- HuggingFace cache ----
+.cache/
+
+# ---- Logs & temp ----
+*.log
+voice-ai/error_log.txt
+voice-ai/out.txt
+voice-ai/sv_out.txt
+voice-ai/test_out.txt
+
+# ---- Lock files (keep package-lock, ignore bun) ----
+bun.lock
+bun.lockb
+
+# ---- Test audio files ----
+voice-ai/dummy.wav
+voice-ai/test.mp3
+voice-ai/test_data/
+
+# ---- Antigravity / Gemini ----
+.gemini/
