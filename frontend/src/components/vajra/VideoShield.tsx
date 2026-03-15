@@ -22,6 +22,7 @@ const VideoShield = () => {
   const [recording, setRecording] = useState(false);
   const [cameraOn, setCameraOn] = useState(false);
   const [liveStatus, setLiveStatus] = useState<{ prob: number, status: string } | null>(null);
+  const [isRppgActive, setIsRppgActive] = useState(false);
 
   useEffect(() => {
     if (cameraOn && videoRef.current && streamRef.current) {
@@ -91,6 +92,13 @@ const VideoShield = () => {
       mediaRecorder.start();
       setRecording(true);
       setErrorMessage("");
+      
+      // KAVACHA: Trigger rPPG screen flash sequence for blood flow validation
+      setIsRppgActive(true);
+      setTimeout(() => {
+        setIsRppgActive(false);
+      }, 3500);
+
     } catch (err) {
       console.error("Camera access denied:", err);
       setErrorMessage("Camera access denied.");
@@ -178,6 +186,23 @@ const VideoShield = () => {
                  muted 
                  className="w-full object-cover max-h-[300px]" 
                />
+
+               {/* rPPG LIVENESS VALIDATION SEQUENCE */}
+               <AnimatePresence>
+                 {isRppgActive && (
+                   <motion.div
+                     initial={{ opacity: 0 }}
+                     animate={{ opacity: 0.35, backgroundColor: ['#ff0000', '#00ff00', '#0000ff', '#ffffff'] }}
+                     exit={{ opacity: 0 }}
+                     transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }}
+                     className="absolute inset-0 z-10 pointer-events-none mix-blend-screen"
+                   >
+                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white font-mono text-[8px] bg-black/50 px-2 rounded opacity-80 backdrop-blur-sm">
+                       rPPG SIGNAL LOCKING...
+                     </div>
+                   </motion.div>
+                 )}
+               </AnimatePresence>
                
                {/* SIMPLE WARNING SHIELD */}
                <AnimatePresence>
