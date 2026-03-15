@@ -2,24 +2,18 @@ import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useVajra } from '@/context/VajraContext';
 
-const logLines = [
-  '> Initializing RISC Zero zkVM...',
-  '> Loading circuit: identity_verify_v2.zk',
-  '> Hashing biometric commitment...',
-  '> Computing Merkle inclusion proof...',
-  '> Running STARK prover (3.2M constraints)...',
-  '> Verifying proof locally...',
-  '> Anchoring to Polygon Amoy...',
-  '> ✓ Proof verified on-chain',
-];
-
-const randomHex = (len: number) =>
-  '0x' + Array.from({ length: len }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+// Helper to reliably hash strings using Web API
+const computeSHA256 = async (message: string) => {
+  const msgBuffer = new TextEncoder().encode(message);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return '0x' + hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+};
 
 type ZKStatus = 'idle' | 'generating' | 'anchored' | 'failed';
 
 const ZKAttestation = () => {
-  const { systemStatus } = useVajra();
+  const { systemStatus, analysisResult } = useVajra();
   const [status, setStatus] = useState<ZKStatus>('idle');
   const [progress, setProgress] = useState(0);
   const [visibleLines, setVisibleLines] = useState<string[]>([]);
@@ -27,27 +21,57 @@ const ZKAttestation = () => {
   const prevStatus = useRef(systemStatus);
   const generating = useRef(false);
 
-  const generate = () => {
+  const generate = async () => {
     if (generating.current) return;
     generating.current = true;
     setStatus('generating');
     setVisibleLines([]);
     setProgress(0);
 
-    logLines.forEach((line, i) => {
+    // Build real contextual logs
+    let payloadString = "";
+    const dynamicLogs = [
+      '> Initializing RISC Zero zkVM...',
+      '> Loading circuit: identity_verify_v2.zk'
+    ];
+
+    if (analysisResult) {
+      dynamicLogs.push(`> Hashing session payload (Trust Score: ${(analysisResult.trust_score * 100).toFixed(1)}%)...`);
+      dynamicLogs.push(`> Spectrogram: ${analysisResult.models.spectrogram} | Wav2Vec2: ${analysisResult.models.wav2vec}...`);
+      dynamicLogs.push(`> Speaker Similarity: ${analysisResult.models.speaker_similarity.toFixed(2)} — Anchoring node...`);
+      payloadString = JSON.stringify(analysisResult);
+    } else {
+      dynamicLogs.push('> Hashing baseline sensor feed...');
+      payloadString = JSON.stringify({ ts: Date.now(), sensor: "baseline" });
+    }
+
+    dynamicLogs.push('> Computing Merkle inclusion proof...');
+    dynamicLogs.push('> Running STARK prover (3.2M constraints)...');
+    dynamicLogs.push('> Verifying proof locally...');
+    dynamicLogs.push('> Anchoring to Polygon Amoy...');
+    dynamicLogs.push('> ✓ Proof verified on-chain');
+
+    // Asynchronously simulate timeline while hashing
+    const startTs = Date.now().toString();
+    const realHash = await computeSHA256(payloadString);
+    const realNullifier = await computeSHA256(payloadString + startTs + "nullifier");
+    const realCommitment = await computeSHA256(payloadString + "commitment");
+
+    dynamicLogs.forEach((line, i) => {
       setTimeout(() => {
         setVisibleLines((prev) => [...prev, line]);
-        setProgress(Math.round(((i + 1) / logLines.length) * 100));
-        if (i === logLines.length - 1) {
+        setProgress(Math.round(((i + 1) / dynamicLogs.length) * 100));
+        
+        if (i === dynamicLogs.length - 1) {
           setStatus('anchored');
           setProofData({
-            hash: randomHex(20),
-            nullifier: randomHex(20),
-            commitment: randomHex(20),
+            hash: realHash.substring(0, 42), // Typical ETH format length
+            nullifier: realNullifier.substring(0, 42),
+            commitment: realCommitment.substring(0, 42),
           });
           generating.current = false;
         }
-      }, 600 * (i + 1));
+      }, 700 * (i + 1));
     });
   };
 
@@ -136,7 +160,7 @@ const ZKAttestation = () => {
           ].map(d => (
             <div key={d.l} className="flex justify-between">
               <span className="font-display text-[7px] tracking-[0.15em] text-muted-foreground">{d.l}</span>
-              <span className="font-mono text-[9px] text-secondary truncate ml-2 max-w-[140px]">{d.v}</span>
+              <span className="font-mono text-[9px] text-secondary truncate ml-2 max-w-[140px]" title={d.v}>{d.v}</span>
             </div>
           ))}
         </div>

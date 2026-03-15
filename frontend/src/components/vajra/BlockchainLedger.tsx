@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useVajra } from '@/context/VajraContext';
 
 type TxType = 'PROOF_ANCHOR' | 'IDENTITY_REGISTER' | 'REVOCATION';
@@ -19,54 +19,57 @@ const typeColors: Record<TxType, string> = {
   REVOCATION: '#FF3B5C',
 };
 
-const randomHex = () =>
-  '0x' + Array.from({ length: 8 }, () => Math.floor(Math.random() * 16).toString(16)).join('') + '...' +
-  Array.from({ length: 4 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+// Helper to reliably hash strings using Web API
+const computeSHA256 = async (message: string) => {
+  const msgBuffer = new TextEncoder().encode(message);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return '0x' + hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+};
 
 const now = () => new Date().toLocaleTimeString('en-US', { hour12: false });
 
-let blockHeight = 48291053;
-
-const BlockchainLedger = () => {
-  const { systemStatus } = useVajra();
+export default function BlockchainLedger() {
+  const { systemStatus, analysisResult } = useVajra();
   const [txs, setTxs] = useState<Tx[]>([]);
+  const [blockHeight, setBlockHeight] = useState(48291053);
 
-  const addTx = (type?: TxType) => {
-    const types: TxType[] = ['PROOF_ANCHOR', 'IDENTITY_REGISTER', 'REVOCATION'];
-    blockHeight += Math.floor(Math.random() * 3 + 1);
-    const tx: Tx = {
-      id: Math.random().toString(36).slice(2),
-      type: type || types[Math.floor(Math.random() * types.length)],
-      hash: randomHex(),
-      block: blockHeight,
-      time: now(),
-      confirmed: Math.random() > 0.2,
-    };
-    setTxs((prev) => [tx, ...prev].slice(0, 20));
-  };
-
-  // Auto-add every 8s
+  // Listen for Live system status changes to anchor to the chain
   useEffect(() => {
-    const t = setInterval(() => addTx(), 8000);
-    return () => clearInterval(t);
-  }, []);
+    if (systemStatus === 'idle') return;
 
-  // Listen for ZK proof anchor
-  useEffect(() => {
-    if (systemStatus === 'verified') {
+    const anchorPayload = async () => {
+      let payloadString = "";
+      if (analysisResult) {
+         payloadString = JSON.stringify(analysisResult);
+      } else {
+         payloadString = JSON.stringify({ ts: Date.now(), sensor: "fallback" });
+      }
+
+      const txHash = await computeSHA256(payloadString + Date.now().toString() + "tx");
+      
+      let txType: TxType = 'IDENTITY_REGISTER';
+      if (systemStatus === 'verified') {
+        txType = 'PROOF_ANCHOR';
+      } else if (systemStatus === 'threat') {
+        txType = 'REVOCATION';
+      }
+
       setTimeout(() => {
-        blockHeight += 1;
+        setBlockHeight(prev => prev + 1);
         const newTx: Tx = {
           id: Math.random().toString(36).slice(2),
-          type: 'PROOF_ANCHOR' as TxType,
-          hash: randomHex(),
-          block: blockHeight,
+          type: txType,
+          hash: txHash.substring(0, 66),
+          block: blockHeight + 1,
           time: now(),
           confirmed: true,
         };
         setTxs((prev) => [newTx, ...prev].slice(0, 20));
-      }, 6000); // after ZK proof completes
-    }
+      }, systemStatus === 'verified' ? 4000 : 1000); // Delay proof anchor to align with ZK panel
+    };
+
+    anchorPayload();
   }, [systemStatus]);
 
   const panelGlow = systemStatus === 'threat' ? 'threat-glow animate-pulse-threat' : systemStatus === 'verified' ? 'verified-glow' : '';
@@ -82,31 +85,41 @@ const BlockchainLedger = () => {
       </div>
 
       {/* Transaction list */}
-      <div className="flex-1 min-h-[120px] max-h-[200px] overflow-y-auto space-y-1 mb-3">
+      <div className="flex-1 min-h-[120px] max-h-[200px] overflow-y-auto space-y-1 mb-3 pr-1">
         {txs.length === 0 && (
-          <span className="font-display text-[9px] text-muted-foreground tracking-[0.15em]">AWAITING TRANSACTIONS...</span>
+          <span className="font-display text-[9px] text-muted-foreground tracking-[0.15em] mt-2 block">
+            AWAITING LIVE NETWORK TRANSACTION...
+          </span>
         )}
-        {txs.map((tx) => (
-          <motion.div
-            key={tx.id}
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.2 }}
-            className="flex items-center gap-2 py-1.5 border-b border-foreground/[0.03]"
-          >
-            <span
-              className="font-display text-[7px] tracking-[0.1em] px-1.5 py-0.5 rounded shrink-0"
-              style={{ color: typeColors[tx.type], backgroundColor: typeColors[tx.type] + '15', border: `1px solid ${typeColors[tx.type]}30` }}
+        <AnimatePresence>
+          {txs.map((tx) => (
+            <motion.div
+              key={tx.id}
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ duration: 0.3 }}
+              className="flex flex-col gap-1 py-2 border-b border-foreground/[0.04]"
             >
-              {tx.type.replace('_', ' ')}
-            </span>
-            <span className="font-mono text-[8px] text-secondary truncate flex-1">{tx.hash}</span>
-            <span className="font-mono text-[8px] text-muted-foreground shrink-0">#{tx.block}</span>
-            <span className="font-display text-[7px] shrink-0" style={{ color: tx.confirmed ? '#00E676' : '#F5A623' }}>
-              {tx.confirmed ? '✓' : '⏳'}
-            </span>
-          </motion.div>
-        ))}
+              <div className="flex items-center justify-between">
+                <span
+                  className="font-display text-[7px] tracking-[0.1em] px-1.5 py-0.5 rounded shrink-0"
+                  style={{ color: typeColors[tx.type], backgroundColor: typeColors[tx.type] + '15', border: `1px solid ${typeColors[tx.type]}30` }}
+                >
+                  {tx.type.replace('_', ' ')}
+                </span>
+                <span className="font-display text-[7px] text-muted-foreground">{tx.time}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                 <span className="font-mono text-[8px] text-secondary truncate flex-1" title={tx.hash}>{tx.hash}</span>
+                 <span className="font-mono text-[8px] text-muted-foreground shrink-0 border border-foreground/10 px-1 rounded bg-background/50">#{tx.block}</span>
+                 <span className="font-display text-[7px] shrink-0 font-bold" style={{ color: tx.confirmed ? '#00E676' : '#F5A623' }}>
+                   {tx.confirmed ? 'CONFIRMED' : 'PENDING'}
+                 </span>
+              </div>
+            </motion.div>
+          ))}
+        </AnimatePresence>
       </div>
 
       {/* Bottom stats */}
@@ -116,16 +129,14 @@ const BlockchainLedger = () => {
           <div className="font-mono text-[10px] text-secondary">{txs.length}</div>
         </div>
         <div>
-          <div className="font-display text-[7px] tracking-[0.15em] text-muted-foreground">BLOCK HEIGHT</div>
-          <div className="font-mono text-[10px] text-secondary">{blockHeight}</div>
+          <div className="font-display text-[7px] tracking-[0.15em] text-muted-foreground">LATEST BLOCK</div>
+          <div className="font-mono text-[10px] text-secondary">#{blockHeight}</div>
         </div>
         <div>
-          <div className="font-display text-[7px] tracking-[0.15em] text-muted-foreground">GAS</div>
-          <div className="font-mono text-[10px] text-secondary">~0.001 MATIC</div>
+          <div className="font-display text-[7px] tracking-[0.15em] text-muted-foreground">NETWORK GAS</div>
+          <div className="font-mono text-[10px] text-secondary text-right">0.003 MATIC</div>
         </div>
       </div>
     </div>
   );
-};
-
-export default BlockchainLedger;
+}

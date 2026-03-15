@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mic, UploadCloud, Square, Zap } from 'lucide-react';
 import { useVajra, AnalysisResult } from '@/context/VajraContext';
@@ -7,7 +7,44 @@ const VoiceEngine = () => {
   const { systemStatus, setSystemStatus, setThreatLevel, setAnalysisResult, analysisResult: result } = useVajra();
   const [scanning, setScanning] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [recording, setRecording] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) audioChunksRef.current.push(event.data);
+      };
+
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const file = new File([audioBlob], 'recording.webm', { type: 'audio/webm' });
+        handleFileUpload(file);
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      mediaRecorder.start();
+      setRecording(true);
+      setErrorMessage("");
+    } catch (err) {
+      console.error(err);
+      setErrorMessage("Microphone access denied.");
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && recording) {
+      mediaRecorderRef.current.stop();
+      setRecording(false);
+    }
+  };
 
   const handleFileUpload = async (file: File) => {
     if (!file) return;
@@ -176,12 +213,27 @@ const VoiceEngine = () => {
             }
           }} 
         />
-        {!scanning ? (
+        {!scanning && !recording ? (
+          <>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="flex-1 font-display text-[10px] tracking-[0.2em] py-3 bg-primary/10 text-primary border border-primary/20 rounded-md hover:bg-primary/20 transition-colors flex items-center justify-center gap-2"
+            >
+              <UploadCloud className="w-4 h-4" /> UPLOAD
+            </button>
+            <button
+              onClick={startRecording}
+              className="flex-1 font-display text-[10px] tracking-[0.2em] py-3 bg-red-500/10 text-red-500 border border-red-500/20 rounded-md hover:bg-red-500/20 transition-colors flex items-center justify-center gap-2"
+            >
+              <Mic className="w-4 h-4" /> RECORD VOCALS
+            </button>
+          </>
+        ) : recording ? (
           <button
-            onClick={() => fileInputRef.current?.click()}
-            className="flex-1 font-display text-[10px] tracking-[0.2em] py-3 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
+            onClick={stopRecording}
+            className="flex-1 font-display text-[10px] tracking-[0.2em] py-3 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors flex items-center justify-center gap-2 animate-pulse"
           >
-            <UploadCloud className="w-4 h-4" /> UPLOAD AUDIO FILE
+            <Square className="w-4 h-4" /> STOP RECORDING
           </button>
         ) : (
           <button

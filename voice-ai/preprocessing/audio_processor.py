@@ -32,14 +32,29 @@ def load_audio(path: str, target_sr: int = 16_000) -> Tuple[torch.Tensor, int]:
         data, sr = sf.read(path)
     except Exception:
         # Fallback to librosa which supports mp3 via built-in packages
-        import librosa
-        data, sr = librosa.load(path, sr=None, mono=False)
-        # librosa returns shape (channels, length), make it (length, channels)
-        if data.ndim == 2:
-            data = data.T
-            
+        try:
+            import librosa
+            data, sr = librosa.load(path, sr=None, mono=False)
+            # librosa returns shape (channels, length), make it (length, channels)
+            if data.ndim == 2:
+                data = data.T
+        except Exception:
+            # Fallback to PyAV for formats like webm from MediaRecorder without ffmpeg
+            import av
+            import numpy as np
+            with av.open(path) as container:
+                stream = container.streams.audio[0]
+                sr = stream.rate
+                frames = []
+                for frame in container.decode(stream):
+                    frames.append(frame.to_ndarray())
+                # PyAV returns shape (channels, samples). Transpose to (samples, channels)
+                data = np.concatenate(frames, axis=1).T
+
     if data.ndim == 1:
         data = data.reshape(-1, 1)
+    
+    import numpy as np
     waveform = torch.tensor(data.astype(np.float32)).T
 
     # Mono
