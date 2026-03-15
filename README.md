@@ -83,6 +83,21 @@ npm run dev
 # Running on http://localhost:5173
 ```
 
+### 3. Deploy the Smart Contract (Polygon Amoy)
+```bash
+cd blockchain
+npm install
+# Add PRIVATE_KEY="your_key" to blockchain/.env
+npx hardhat run scripts/deploy.js --network polygonAmoy
+```
+
+### 4. Boot the ZK Attestation Microservice (Go)
+```bash
+cd backend-go
+go run main.go
+# Running on http://localhost:8080
+```
+
 ---
 
 ## 🌍 Built for NOVUS 2026
