@@ -63,6 +63,14 @@ class BaseTrainer:
     def train_one_epoch(self, dataloader: DataLoader) -> Tuple[float, float]:
         """One training epoch with AMP + gradient clipping."""
         self.model.train()
+        
+        # Ensure frozen batchnorm layers stay in eval mode so running stats aren't mismatched
+        for module in self.model.modules():
+            if isinstance(module, nn.BatchNorm2d) or isinstance(module, nn.BatchNorm1d):
+                weight = getattr(module, 'weight', None)
+                if weight is not None and not weight.requires_grad:
+                    module.eval()
+                    
         total_loss, correct, total = 0.0, 0, 0
 
         for inputs, labels in tqdm(dataloader, desc="  Train", leave=False):

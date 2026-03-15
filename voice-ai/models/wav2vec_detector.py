@@ -14,12 +14,13 @@ Architecture:
   → Softmax → argmax for verdict
 """
 
+import os
 from typing import Any, Dict, Tuple
 
 import torch
 import torch.nn.functional as F
 
-from transformers import Wav2Vec2ForSequenceClassification, Wav2Vec2Processor
+from transformers import Wav2Vec2ForSequenceClassification, Wav2Vec2FeatureExtractor
 
 
 class Wav2VecPretrainedDetector:
@@ -41,8 +42,17 @@ class Wav2VecPretrainedDetector:
         self.model_name = model_name
         self.device = device or torch.device("cpu")
 
-        self.processor = Wav2Vec2Processor.from_pretrained(model_name)
-        self.model = Wav2Vec2ForSequenceClassification.from_pretrained(model_name)
+        # ── Integration with new Training Pipeline ──
+        # Check if we have fine-tuned local weights. If yes, override HF download.
+        local_trained_path = "export/wav2vec_finetuned_hf"
+        if os.path.exists(local_trained_path):
+            print(f"Loading FINE-TUNED Wav2Vec2 weights from {local_trained_path}")
+            load_path = local_trained_path
+        else:
+            load_path = model_name
+
+        self.processor = Wav2Vec2FeatureExtractor.from_pretrained(load_path)
+        self.model = Wav2Vec2ForSequenceClassification.from_pretrained(load_path)
         self.model.eval()
         self.model.to(self.device)
 

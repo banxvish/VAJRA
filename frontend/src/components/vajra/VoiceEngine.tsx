@@ -1,23 +1,11 @@
 import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mic, UploadCloud, Square, Zap } from 'lucide-react';
-import { useVajra } from '@/context/VajraContext';
-
-type AnalysisResult = {
-  trust_score: number;
-  status: 'SAFE' | 'SUSPICIOUS' | 'FAKE';
-  models: {
-    spectrogram: string;
-    wav2vec: string;
-    codec: string;
-    speaker_similarity: number;
-  };
-};
+import { useVajra, AnalysisResult } from '@/context/VajraContext';
 
 const VoiceEngine = () => {
-  const { systemStatus, setSystemStatus, setThreatLevel } = useVajra();
+  const { systemStatus, setSystemStatus, setThreatLevel, setAnalysisResult, analysisResult: result } = useVajra();
   const [scanning, setScanning] = useState(false);
-  const [result, setResult] = useState<AnalysisResult | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -26,7 +14,7 @@ const VoiceEngine = () => {
 
     setErrorMessage("");
     setScanning(true);
-    setResult(null);
+    setAnalysisResult(null);
     setSystemStatus('active');
     setThreatLevel(0);
 
@@ -44,17 +32,17 @@ const VoiceEngine = () => {
       }
 
       const data = await response.json();
-      setResult(data);
+      setAnalysisResult(data);
 
       if (data.status === 'SAFE') {
         setSystemStatus('verified');
-        setThreatLevel(Math.floor(Math.random() * 5 + 2));
+        setThreatLevel(Math.max(0, Math.floor((1 - data.trust_score) * 100)));
       } else if (data.status === 'SUSPICIOUS') {
         setSystemStatus('threat');
-        setThreatLevel(Math.floor(Math.random() * 20 + 60));
+        setThreatLevel(Math.floor((1 - data.trust_score) * 100));
       } else {
         setSystemStatus('threat');
-        setThreatLevel(Math.floor(Math.random() * 10 + 90));
+        setThreatLevel(Math.min(100, Math.floor((1 - data.trust_score) * 100)));
       }
     } catch (err) {
       console.error(err);

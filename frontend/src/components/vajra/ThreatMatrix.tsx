@@ -1,19 +1,25 @@
 import { useVajra } from '@/context/VajraContext';
 import { motion } from 'framer-motion';
 
-const dimensions = [
-  { label: 'AUDIO SYNC', authScore: 94, threatScore: 18 },
-  { label: 'FACIAL MATCH', authScore: 91, threatScore: 12 },
-  { label: 'LIVENESS', authScore: 97, threatScore: 8 },
-  { label: 'ENTROPY', authScore: 6, threatScore: 89, inverted: true },
-];
-
 const ThreatMatrix = () => {
-  const { systemStatus, threatLevel } = useVajra();
+  const { systemStatus, threatLevel, analysisResult } = useVajra();
 
   const isThreat = systemStatus === 'threat';
   const isVerified = systemStatus === 'verified';
   const displayLevel = isThreat ? threatLevel : isVerified ? Math.max(2, 100 - threatLevel) < 10 ? threatLevel : threatLevel : 0;
+
+  // Derive dynamic dimensions from analysisResult if present
+  const dimensions = analysisResult ? [
+    { label: 'SPECTROGRAM', authScore: analysisResult.models.spectrogram === 'REAL' ? 95 : 15, threatScore: analysisResult.models.spectrogram === 'REAL' ? 5 : 85 },
+    { label: 'WAV2VEC', authScore: analysisResult.models.wav2vec === 'REAL' ? 92 : 12, threatScore: analysisResult.models.wav2vec === 'REAL' ? 8 : 88 },
+    { label: 'CODEC', authScore: analysisResult.models.codec === 'HUMAN' ? 98 : 4, threatScore: analysisResult.models.codec === 'HUMAN' ? 2 : 96 },
+    { label: 'SPEAKER MATCH', authScore: Math.round(analysisResult.models.speaker_similarity * 100), threatScore: Math.max(0, 100 - Math.round(analysisResult.models.speaker_similarity * 100)), inverted: false },
+  ] : [
+    { label: 'AUDIO SYNC', authScore: 0, threatScore: 0 },
+    { label: 'FACIAL MATCH', authScore: 0, threatScore: 0 },
+    { label: 'LIVENESS', authScore: 0, threatScore: 0 },
+    { label: 'ENTROPY', authScore: 0, threatScore: 0, inverted: true },
+  ];
 
   const gaugeColor = displayLevel > 70 ? '#FF3B5C' : displayLevel > 40 ? '#F5A623' : '#00E676';
   const circumference = 2 * Math.PI * 54;
